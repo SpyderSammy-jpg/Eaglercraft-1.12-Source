@@ -1,54 +1,57 @@
 ```html
 <!DOCTYPE html>
 <html lang="en" style="width:100%;height:100%;background-color:black;">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0">
-        <meta name="description" content="SpyderSammy Survival Eaglercraft 1.12.2">
-        <meta name="keywords" content="eaglercraft, eaglercraftx, minecraft, 1.12.2">
-        <title>SpyderSammy Survival</title>
-        <meta property="og:locale" content="en-US">
-        <meta property="og:type" content="website">
-        <meta property="og:title" content="SpyderSammy Survival">
-        <meta property="og:description" content="Eaglercraft 1.12.2">
-        <link type="image/png" rel="shortcut icon" href="favicon.png">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0">
 
-        <script type="text/javascript" src="classes.js"></script>
+    <meta name="description" content="The Ultimate Admin Abuse & Minigames Server. This server only operates on Monday - Friday. Admin Abuse: 11:45 - 12:05">
+    <meta name="keywords" content="eaglercraft, eaglercraftx, minecraft, 1.12, 1.12.2">
 
-        <script type="text/javascript">
-            "use strict";
+    <title>The Ultimate Admin Abuse &amp; Minigames Server</title>
 
-            window.addEventListener("load", function() {
-                if (window.location.href.indexOf("file:") === 0) {
-                    alert("Please open this client through a web server.");
-                    return;
-                }
+    <meta property="og:locale" content="en-US">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="The Ultimate Admin Abuse &amp; Minigames Server">
+    <meta property="og:description" content="This server only operates on Monday - Friday. Admin Abuse: 11:45 - 12:05">
 
-                window.eaglercraftXOpts = {
-                    demoMode: false,
-                    container: "game_frame",
-                    assetsURI: "assets.epk",
-                    localesURI: "lang/",
-                    worldsDB: "worlds",
-                    logInvalidCerts: true,
-                    crashOnUncaughtExceptions: true,
+    <link type="image/png" rel="shortcut icon" href="favicon.png">
 
-                    servers: [
-                        {
-                            addr: "wss://sv-survival.eagler.host/",
-                            name: "SpyderSammy Survival"
-                        }
-                    ]
-                };
+    <script type="text/javascript" src="classes.js"></script>
 
-                main();
-            });
-        </script>
-    </head>
+    <script type="text/javascript">
+      "use strict";
 
-    <body
-        style="margin:0;width:100%;height:100%;overflow:hidden;background-color:black;"
-        id="game_frame">
-    </body>
+      window.addEventListener("load", function() {
+        if (window.location.href.indexOf("file:") === 0) {
+          alert("HTTP please, do not open this file locally, run a local HTTP server and load it via HTTP");
+        } else {
+          window.eaglercraftXOpts = {
+            demoMode: false,
+            container: "game_frame",
+            assetsURI: "assets.epk",
+            localesURI: "lang/",
+            worldsDB: "worlds",
+            logInvalidCerts: true,
+            crashOnUncaughtExceptions: true,
+
+            servers: [
+              {
+                addr: "wss://sv-survival.eagler.host/",
+                name: "The Ultimate Admin Abuse & Minigames Server"
+              }
+            ]
+          };
+
+          main();
+        }
+      });
+    </script>
+  </head>
+
+  <body
+    style="margin:0;width:100%;height:100%;overflow:hidden;background-color:black;"
+    id="game_frame">
+  </body>
 </html>
 ```
