@@ -1,3 +1,4 @@
+```java
 package net.minecraft.client.multiplayer;
 
 import java.util.List;
@@ -11,7 +12,6 @@ import net.lax1dude.eaglercraft.EagRuntime;
 import net.lax1dude.eaglercraft.EaglerInputStream;
 import net.lax1dude.eaglercraft.EaglerOutputStream;
 import net.lax1dude.eaglercraft.internal.EnumServerRateLimit;
-import net.lax1dude.eaglercraft.internal.IClientConfigAdapter.DefaultServer;
 import net.lax1dude.eaglercraft.internal.QueryResponse;
 import net.lax1dude.eaglercraft.socket.AddressResolver;
 import net.lax1dude.eaglercraft.socket.RateLimitTracker;
@@ -23,306 +23,298 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.text.TextFormatting;
 
-/**+
- * This portion of EaglercraftX contains deobfuscated Minecraft 1.8 source code.
- * 
- * Minecraft 1.8.8 bytecode is (c) 2015 Mojang AB. "Do not distribute!"
- * Mod Coder Pack v9.18 deobfuscation configs are (c) Copyright by the MCP Team
- * 
- * EaglercraftX 1.8 patch files (c) 2022-2025 lax1dude, ayunami2000. All Rights Reserved.
- * 
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
- * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
- * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
- * IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
- * INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
- * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
- * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
- * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
- * POSSIBILITY OF SUCH DAMAGE.
- * 
+/**
+ * Customized Eaglercraft server list.
+ * The built-in server is SpyderSammy Survival.
  */
 public class ServerList {
-	private static final Logger logger = LogManager.getLogger();
-	private final Minecraft mc;
-	private final List<ServerData> allServers = Lists.newArrayList();
-	/**+
-	 * List of ServerData instances.
-	 */
-	private final List<ServerData> servers = Lists.newArrayList();
+    private static final Logger logger = LogManager.getLogger();
 
-	private static ServerList instance = null;
+    private static final String DEFAULT_SERVER_NAME = "SpyderSammy Survival";
+    private static final String DEFAULT_SERVER_ADDRESS = "wss://sv-survival.eagler.host/";
 
-	private ServerList(Minecraft mcIn) {
-		this.mc = mcIn;
-		this.loadServerList();
-	}
+    private final Minecraft mc;
+    private final List<ServerData> allServers = Lists.newArrayList();
+    private final List<ServerData> servers = Lists.newArrayList();
 
-	public static void initServerList(Minecraft mc) {
-		instance = new ServerList(mc);
-	}
+    private static ServerList instance = null;
 
-	public static ServerList getServerList() {
-		return instance;
-	}
+    private ServerList(Minecraft mcIn) {
+        this.mc = mcIn;
+        this.loadServerList();
+    }
 
-	/**+
-	 * Loads a list of servers from servers.dat, by running
-	 * ServerData.getServerDataFromNBTCompound on each NBT compound
-	 * found in the "servers" tag list.
-	 */
-	public void loadServerList() {
-		loadServerList(EagRuntime.getStorage("s"));
-	}
+    public static void initServerList(Minecraft mc) {
+        instance = new ServerList(mc);
+    }
 
-	/**+
-	 * Loads a list of servers from servers.dat, by running
-	 * ServerData.getServerDataFromNBTCompound on each NBT compound
-	 * found in the "servers" tag list.
-	 */
-	public void loadServerList(byte[] localStorage) {
-		try {
-			freeServerIcons();
+    public static ServerList getServerList() {
+        return instance;
+    }
 
-			this.allServers.clear();
-			for (DefaultServer srv : EagRuntime.getConfiguration().getDefaultServerList()) {
-				ServerData dat = new ServerData(srv.name, srv.addr, true);
-				dat.isDefault = true;
-				dat.hideAddress = srv.hideAddress;
-				this.allServers.add(dat);
-			}
+    public void loadServerList() {
+        loadServerList(EagRuntime.getStorage("s"));
+    }
 
-			if (localStorage != null) {
-				NBTTagCompound nbttagcompound = CompressedStreamTools
-						.readCompressed(new EaglerInputStream(localStorage));
-				if (nbttagcompound == null) {
-					return;
-				}
+    public void loadServerList(byte[] localStorage) {
+        try {
+            freeServerIcons();
+            this.allServers.clear();
 
-				NBTTagList nbttaglist = nbttagcompound.getTagList("servers", 10);
+            // Always add the custom built-in server.
+            ServerData defaultServer = new ServerData(
+                    DEFAULT_SERVER_NAME,
+                    DEFAULT_SERVER_ADDRESS,
+                    true
+            );
+            defaultServer.isDefault = true;
+            defaultServer.hideAddress = false;
+            this.allServers.add(defaultServer);
 
-				for (int i = 0; i < nbttaglist.tagCount(); ++i) {
-					ServerData srv = ServerData.getServerDataFromNBTCompound(nbttaglist.getCompoundTagAt(i));
-					this.allServers.add(srv);
-				}
-			}
+            // Load user-saved servers separately.
+            if (localStorage != null) {
+                NBTTagCompound compound = CompressedStreamTools
+                        .readCompressed(new EaglerInputStream(localStorage));
 
-		} catch (Exception exception) {
-			logger.error("Couldn\'t load server list", exception);
-		} finally {
-			refreshServerPing();
-		}
+                if (compound != null) {
+                    NBTTagList serverList = compound.getTagList("servers", 10);
 
-	}
+                    for (int i = 0; i < serverList.tagCount(); ++i) {
+                        ServerData savedServer = ServerData.getServerDataFromNBTCompound(
+                                serverList.getCompoundTagAt(i)
+                        );
+                        this.allServers.add(savedServer);
+                    }
+                }
+            }
+        } catch (Exception exception) {
+            logger.error("Couldn't load server list", exception);
+        } finally {
+            refreshServerPing();
+        }
+    }
 
-	/**+
-	 * Runs getNBTCompound on each ServerData instance, puts
-	 * everything into a "servers" NBT list and writes it to
-	 * servers.dat.
-	 */
-	public void saveServerList() {
-		byte[] data = writeServerList();
-		if (data != null) {
-			EagRuntime.setStorage("s", data);
-		}
-	}
+    public void saveServerList() {
+        byte[] data = writeServerList();
+        if (data != null) {
+            EagRuntime.setStorage("s", data);
+        }
+    }
 
-	public byte[] writeServerList() {
-		try {
-			NBTTagList nbttaglist = new NBTTagList();
+    public byte[] writeServerList() {
+        try {
+            NBTTagList serverList = new NBTTagList();
 
-			for (int i = 0, l = this.servers.size(); i < l; ++i) {
-				ServerData serverdata = this.servers.get(i);
-				if (!serverdata.isDefault) {
-					nbttaglist.appendTag(serverdata.getNBTCompound());
-				}
-			}
+            for (int i = 0, length = this.servers.size(); i < length; ++i) {
+                ServerData server = this.servers.get(i);
 
-			NBTTagCompound nbttagcompound = new NBTTagCompound();
-			nbttagcompound.setTag("servers", nbttaglist);
+                if (!server.isDefault) {
+                    serverList.appendTag(server.getNBTCompound());
+                }
+            }
 
-			EaglerOutputStream bao = new EaglerOutputStream();
-			CompressedStreamTools.writeCompressed(nbttagcompound, bao);
-			return bao.toByteArray();
+            NBTTagCompound compound = new NBTTagCompound();
+            compound.setTag("servers", serverList);
 
-		} catch (Exception exception) {
-			logger.error("Couldn\'t save server list", exception);
-			return null;
-		}
+            EaglerOutputStream output = new EaglerOutputStream();
+            CompressedStreamTools.writeCompressed(compound, output);
+            return output.toByteArray();
+        } catch (Exception exception) {
+            logger.error("Couldn't save server list", exception);
+            return null;
+        }
+    }
 
-	}
+    public ServerData getServerData(int index) {
+        return this.servers.get(index);
+    }
 
-	/**+
-	 * Gets the ServerData instance stored for the given index in
-	 * the list.
-	 */
-	public ServerData getServerData(int parInt1) {
-		return (ServerData) this.servers.get(parInt1);
-	}
+    public void removeServerData(int index) {
+        ServerData data = this.servers.remove(index);
 
-	/**+
-	 * Removes the ServerData instance stored for the given index in
-	 * the list.
-	 */
-	public void removeServerData(int parInt1) {
-		ServerData data = this.servers.remove(parInt1);
-		if (data != null && data.iconTextureObject != null) {
-			mc.getTextureManager().deleteTexture(data.iconResourceLocation);
-			data.iconTextureObject = null;
-		}
-	}
+        if (data != null && data.iconTextureObject != null) {
+            mc.getTextureManager().deleteTexture(data.iconResourceLocation);
+            data.iconTextureObject = null;
+        }
+    }
 
-	/**+
-	 * Adds the given ServerData instance to the list.
-	 */
-	public void addServerData(ServerData parServerData) {
-		this.servers.add(parServerData);
-	}
+    public void addServerData(ServerData server) {
+        this.servers.add(server);
+    }
 
-	/**+
-	 * Counts the number of ServerData instances in the list.
-	 */
-	public int countServers() {
-		return this.servers.size();
-	}
+    public int countServers() {
+        return this.servers.size();
+    }
 
-	/**+
-	 * Takes two list indexes, and swaps their order around.
-	 */
-	public void swapServers(int parInt1, int parInt2) {
-		ServerData serverdata = this.getServerData(parInt1);
-		this.servers.set(parInt1, this.getServerData(parInt2));
-		this.servers.set(parInt2, serverdata);
-		this.saveServerList();
-	}
+    public void swapServers(int first, int second) {
+        ServerData server = this.getServerData(first);
+        this.servers.set(first, this.getServerData(second));
+        this.servers.set(second, server);
+        this.saveServerList();
+    }
 
-	public void func_147413_a(int parInt1, ServerData parServerData) {
-		this.servers.set(parInt1, parServerData);
-	}
+    public void func_147413_a(int index, ServerData server) {
+        this.servers.set(index, server);
+    }
 
-	public static void func_147414_b(ServerData parServerData) {
-		ServerList serverlist = new ServerList(Minecraft.getMinecraft());
-		serverlist.loadServerList();
+    public static void func_147414_b(ServerData server) {
+        ServerList list = new ServerList(Minecraft.getMinecraft());
+        list.loadServerList();
 
-		for (int i = 0; i < serverlist.countServers(); ++i) {
-			ServerData serverdata = serverlist.getServerData(i);
-			if (serverdata.serverName.equals(parServerData.serverName)
-					&& serverdata.serverIP.equals(parServerData.serverIP)) {
-				serverlist.func_147413_a(i, parServerData);
-				break;
-			}
-		}
+        for (int i = 0; i < list.countServers(); ++i) {
+            ServerData existing = list.getServerData(i);
 
-		serverlist.saveServerList();
-	}
+            if (existing.serverName.equals(server.serverName)
+                    && existing.serverIP.equals(server.serverIP)) {
+                list.func_147413_a(i, server);
+                break;
+            }
+        }
 
-	public void freeServerIcons() {
-		TextureManager mgr = mc.getTextureManager();
-		for (int i = 0, l = allServers.size(); i < l; ++i) {
-			ServerData server = allServers.get(i);
-			if (server.iconTextureObject != null) {
-				mgr.deleteTexture(server.iconResourceLocation);
-				server.iconTextureObject = null;
-			}
-		}
-	}
+        list.saveServerList();
+    }
 
-	public void refreshServerPing() {
-		this.servers.clear();
-		this.servers.addAll(this.allServers);
-		for (int i = 0, l = this.servers.size(); i < l; ++i) {
-			ServerData dat = this.servers.get(i);
-			if (dat.currentQuery != null) {
-				if (dat.currentQuery.isOpen()) {
-					dat.currentQuery.close();
-				}
-				dat.currentQuery = null;
-			}
-			dat.hasPing = false;
-			dat.pingSentTime = -1l;
-		}
-	}
+    public void freeServerIcons() {
+        TextureManager manager = mc.getTextureManager();
 
-	public void updateServerPing() {
-		int total = 0;
-		for (int i = 0, l = this.servers.size(); i < l; ++i) {
-			ServerData dat = this.servers.get(i);
-			if (dat.pingSentTime <= 0l) {
-				dat.pingSentTime = EagRuntime.steadyTimeMillis();
-				if (RateLimitTracker.isLockedOut(dat.serverIP)) {
-					logger.error(
-							"Server {} locked this client out on a previous connection, will not attempt to reconnect",
-							dat.serverIP);
-					dat.serverMOTD = TextFormatting.RED + "Too Many Requests!\nTry again later";
-					dat.pingToServer = -1l;
-					dat.hasPing = true;
-					dat.pinged = true;
-				} else {
-					dat.pingToServer = -2l;
-					String addr = AddressResolver.resolveURI(dat.serverIP);
-					dat.currentQuery = ServerQueryDispatch.sendServerQuery(addr, "MOTD");
-					if (dat.currentQuery == null) {
-						dat.pingToServer = -1l;
-						dat.hasPing = true;
-						dat.pinged = true;
-					} else {
-						++total;
-					}
-				}
-			} else if (dat.currentQuery != null) {
-				dat.currentQuery.update();
-				if (!dat.hasPing) {
-					++total;
-					EnumServerRateLimit rateLimit = dat.currentQuery.getRateLimit();
-					if (rateLimit != EnumServerRateLimit.OK) {
-						if (rateLimit == EnumServerRateLimit.BLOCKED) {
-							RateLimitTracker.registerBlock(dat.serverIP);
-						} else if (rateLimit == EnumServerRateLimit.LOCKED_OUT) {
-							RateLimitTracker.registerLockOut(dat.serverIP);
-						}
-						dat.serverMOTD = TextFormatting.RED + "Too Many Requests!\nTry again later";
-						dat.pingToServer = -1l;
-						dat.hasPing = true;
-						return;
-					}
-				}
-				if (dat.currentQuery.responsesAvailable() > 0) {
-					QueryResponse pkt;
-					do {
-						pkt = dat.currentQuery.getResponse();
-					} while (dat.currentQuery.responsesAvailable() > 0);
-					if (pkt.responseType.equalsIgnoreCase("MOTD") && pkt.isResponseJSON()) {
-						dat.setMOTDFromQuery(pkt);
-						if (!dat.hasPing) {
-							dat.pingToServer = pkt.clientTime - dat.pingSentTime;
-							dat.hasPing = true;
-						}
-					}
-				}
-				if (dat.currentQuery.binaryResponsesAvailable() > 0) {
-					byte[] r;
-					do {
-						r = dat.currentQuery.getBinaryResponse();
-					} while (dat.currentQuery.binaryResponsesAvailable() > 0);
-					dat.setIconPacket(r);
-				}
-				if (!dat.currentQuery.isOpen() && dat.pingSentTime > 0l
-						&& (EagRuntime.steadyTimeMillis() - dat.pingSentTime) > 2000l && !dat.hasPing) {
-					if (RateLimitTracker.isProbablyLockedOut(dat.serverIP)) {
-						logger.error("Server {} ratelimited this client out on a previous connection, assuming lockout",
-								dat.serverIP);
-						dat.serverMOTD = TextFormatting.RED + "Too Many Requests!\nTry again later";
-					}
-					dat.pingToServer = -1l;
-					dat.hasPing = true;
-				}
-			}
-			if (total >= 4) {
-				break;
-			}
-		}
+        for (int i = 0, length = allServers.size(); i < length; ++i) {
+            ServerData server = allServers.get(i);
 
-	}
+            if (server.iconTextureObject != null) {
+                manager.deleteTexture(server.iconResourceLocation);
+                server.iconTextureObject = null;
+            }
+        }
+    }
 
+    public void refreshServerPing() {
+        this.servers.clear();
+        this.servers.addAll(this.allServers);
+
+        for (int i = 0, length = this.servers.size(); i < length; ++i) {
+            ServerData server = this.servers.get(i);
+
+            if (server.currentQuery != null) {
+                if (server.currentQuery.isOpen()) {
+                    server.currentQuery.close();
+                }
+                server.currentQuery = null;
+            }
+
+            server.hasPing = false;
+            server.pingSentTime = -1L;
+        }
+    }
+
+    public void updateServerPing() {
+        int total = 0;
+
+        for (int i = 0, length = this.servers.size(); i < length; ++i) {
+            ServerData server = this.servers.get(i);
+
+            if (server.pingSentTime <= 0L) {
+                server.pingSentTime = EagRuntime.steadyTimeMillis();
+
+                if (RateLimitTracker.isLockedOut(server.serverIP)) {
+                    logger.error(
+                            "Server {} locked this client out on a previous connection, will not attempt to reconnect",
+                            server.serverIP
+                    );
+                    server.serverMOTD = TextFormatting.RED
+                            + "Too Many Requests!\nTry again later";
+                    server.pingToServer = -1L;
+                    server.hasPing = true;
+                    server.pinged = true;
+                } else {
+                    server.pingToServer = -2L;
+
+                    String address = AddressResolver.resolveURI(server.serverIP);
+                    server.currentQuery = ServerQueryDispatch.sendServerQuery(address, "MOTD");
+
+                    if (server.currentQuery == null) {
+                        server.pingToServer = -1L;
+                        server.hasPing = true;
+                        server.pinged = true;
+                    } else {
+                        ++total;
+                    }
+                }
+            } else if (server.currentQuery != null) {
+                server.currentQuery.update();
+
+                if (!server.hasPing) {
+                    ++total;
+
+                    EnumServerRateLimit rateLimit = server.currentQuery.getRateLimit();
+
+                    if (rateLimit != EnumServerRateLimit.OK) {
+                        if (rateLimit == EnumServerRateLimit.BLOCKED) {
+                            RateLimitTracker.registerBlock(server.serverIP);
+                        } else if (rateLimit == EnumServerRateLimit.LOCKED_OUT) {
+                            RateLimitTracker.registerLockOut(server.serverIP);
+                        }
+
+                        server.serverMOTD = TextFormatting.RED
+                                + "Too Many Requests!\nTry again later";
+                        server.pingToServer = -1L;
+                        server.hasPing = true;
+                        return;
+                    }
+                }
+
+                if (server.currentQuery.responsesAvailable() > 0) {
+                    QueryResponse response;
+
+                    do {
+                        response = server.currentQuery.getResponse();
+                    } while (server.currentQuery.responsesAvailable() > 0);
+
+                    if (response.responseType.equalsIgnoreCase("MOTD")
+                            && response.isResponseJSON()) {
+                        server.setMOTDFromQuery(response);
+
+                        if (!server.hasPing) {
+                            server.pingToServer =
+                                    response.clientTime - server.pingSentTime;
+                            server.hasPing = true;
+                        }
+                    }
+                }
+
+                if (server.currentQuery.binaryResponsesAvailable() > 0) {
+                    byte[] response;
+
+                    do {
+                        response = server.currentQuery.getBinaryResponse();
+                    } while (server.currentQuery.binaryResponsesAvailable() > 0);
+
+                    server.setIconPacket(response);
+                }
+
+                if (!server.currentQuery.isOpen()
+                        && server.pingSentTime > 0L
+                        && (EagRuntime.steadyTimeMillis()
+                                - server.pingSentTime) > 2000L
+                        && !server.hasPing) {
+
+                    if (RateLimitTracker.isProbablyLockedOut(server.serverIP)) {
+                        logger.error(
+                                "Server {} ratelimited this client out on a previous connection, assuming lockout",
+                                server.serverIP
+                        );
+                        server.serverMOTD = TextFormatting.RED
+                                + "Too Many Requests!\nTry again later";
+                    }
+
+                    server.pingToServer = -1L;
+                    server.hasPing = true;
+                }
+            }
+
+            if (total >= 4) {
+                break;
+            }
+        }
+    }
 }
+```
